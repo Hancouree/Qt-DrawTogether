@@ -1,0 +1,6 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/DrawTogether">
+<file alias="main.qml">D:/current qt tasks/DrawTogether/main.qml</file>
+<file alias="ConnectionPage.qml">D:/current qt tasks/DrawTogether/ConnectionPage.qml</file>
+</qresource>
+</RCC>

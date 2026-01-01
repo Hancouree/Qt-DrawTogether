@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/Project">
+        <file>ConnectionPage.qml</file>
+        <file>main.qml</file>
+        <file>AuthenticationPage.qml</file>
+    </qresource>
+</RCC>
