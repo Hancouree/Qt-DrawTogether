@@ -1,0 +1,21 @@
+# Qt Creator
+.qtcreator/
+*.user
+*.user.*
+
+# Build directories
+build/
+build-*/
+
+# Compiled files
+*.o
+*.obj
+*.moc
+*.rcc
+*.ui
+
+# Executables
+*.exe
+*.dll
+*.so
+*.app
