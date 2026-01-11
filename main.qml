@@ -28,15 +28,16 @@ Window {
 
         function onStateChanged() {
             //delete stack view mb
+            console.log(Socket.state)
             switch(Socket.state) {
                 case 0: //CONNECTING
                     stackView.push(connectionPage)
                     break;
-                case 1: //RECONNECTING
-                    //create something
-                    break;
-                case 2: //AUTHENTICATION
+                case 3: //AUTHENTIFICATION
+                    stackView.pop()
                     stackView.push(authenticationPage)
+                    break;
+                case 2:
                     break;
                 default:
                     console.log("Default was called")

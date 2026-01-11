@@ -1,32 +1,28 @@
 #include "socket.h"
 
-inline Socket::STATES transition(const Socket::STATES& state, const Socket::EVENTS& event) {
-    if (event == Socket::DISCONNECTED) {
-        return Socket::RECONNECTING;
-    }
-
-    switch(state) {
-    case Socket::CONNECTING:
-        if (event == Socket::CONNECTED)
-            return Socket::AUTHENTICATION;
-    case Socket::AUTHENTICATION:
-        if (event == Socket::USERNAME_ESTABLISHED)
-            return Socket::MENU;
-    default:
-        return state;
-    }
-
-    return state;
-}
-
-Socket::Socket(QObject *parent) : QObject(parent),
-    currentState(CONNECTING)
+Socket::Socket(QObject *parent) : RequestManager(parent), serverUrl(QUrl("wss://26.209.218.198:8080"))
 {
     socket = new QWebSocket;
 
-    socket->open(QUrl("wss://26.209.218.198:8080"));
+    initSocket();
+
+    socket->open(serverUrl);
+
+    initTimers();
+    initStateMachine();
+}
+
+void Socket::initSocket()
+{
+    _connected = false;
 
     connect(socket, &QWebSocket::connected, this, &Socket::onConnection);
+    connect(socket, &QWebSocket::textMessageReceived, this, &Socket::onAnswer);
+    connect(socket, &QWebSocket::disconnected, this, [this]() {
+        _connected = false;
+
+        reconnectTimer.start(RECONNECT_INTERVAL_MS);
+    });
     connect(socket, &QWebSocket::sslErrors, this, [this](const QList<QSslError> errors) {
         for (auto& error : errors)
             qDebug() << error.errorString() << '\n';
@@ -35,30 +31,65 @@ Socket::Socket(QObject *parent) : QObject(parent),
     });
 }
 
+void Socket::initTimers()
+{
+    connect(&reconnectTimer, &QTimer::timeout, this, &Socket::tryReconnect);
+
+}
+
+void Socket::initStateMachine()
+{
+    connect(&_state, &StateMachine::stateChanged, this, [this]() {
+        emit stateChanged();
+    });
+}
+
 void Socket::onConnection()
 {
     qDebug() << "Socket was connected to the server\n";
-    currentState = transition(currentState, CONNECTED);
-    emit stateChanged();
+    _connected = true;
+    _state.applyEvent(StateMachine::Events::CONNECTION_ESTABLISHED);
+
+    reconnectAttempts = 0;
+    reconnectTimer.stop();
 }
 
-Socket::STATES Socket::state()
+void Socket::onAnswer(const QString &message)
 {
-    return currentState;
-}
-
-QString Socket::username()
-{
-    return _username;
-}
-
-void Socket::sendServerRequest(const QString &req)
-{
-    if (socket->state() == QAbstractSocket::ConnectedState) {
-        socket->sendTextMessage(req); //создать QTimer::singleshot()
-    } else {
-        //...
+    qDebug() << message << '\n';
+    QJsonDocument doc = QJsonDocument::fromJson(message.toUtf8());
+    if (doc.isNull()) {
+        qDebug() << "Invalid JSON\n";
+        return;
     }
+
+    QJsonObject root = doc.object();
+
+    const RequestId requestId = root["requestId"].toInteger();
+
+    if (onDone.count(requestId)) {
+        onDone[requestId](root);
+        onDone.erase(requestId);
+    }
+
+    if (onFail.count(requestId))
+        onFail.erase(requestId);
+}
+
+void Socket::tryReconnect()
+{
+    if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
+        qDebug() << "MAX ATTEMPTS REACHED\n";
+        //emit error;
+        return;
+    }
+
+    qDebug() << "Reconnect attempt: " << reconnectAttempts << '\n';
+
+    if (!serverUrl.isEmpty())
+        socket->open(serverUrl);
+
+    ++reconnectAttempts;
 }
 
 void Socket::sendUsername(const QString &username)
@@ -69,27 +100,40 @@ void Socket::sendUsername(const QString &username)
     json["username"] = username;
     json["timestamp"] = QDateTime::currentMSecsSinceEpoch();
 
-    sendServerRequest(QJsonDocument(json).toJson());
-}
+    request(json)
+    .done([this](const QJsonObject& root) {
+        qDebug() << "answer caught in done method\n";
 
-//handlers
-bool Socket::handleEstablishedUsername(const QString& answer, QJsonObject& root) {
-    if (answer != "username_established")
-        return false;
+        _username = root["username"].toString();
+        session_id = root["session_id"].toString();
 
-    _username = root["username"].toString();
-    session_id = root["session_id"].toString();
+        qDebug() << "username established\n";
 
-    currentState = transition(currentState, USERNAME_ESTABLISHED);
+        _state.applyEvent(StateMachine::Events::AUTHENTICATION_SUCCESS);
 
-    usernameChanged();
-    stateChanged();
-
-    return true;
+        emit usernameChanged();
+    })
+    .fail([](const QJsonObject& root) {
+            qDebug() << "Error ocurred\n";
+    });
 }
 
 Socket::~Socket()
 {
+    if (_connected) {
+        socket->disconnect();
+    }
+
     delete socket;
 }
+
+Request Socket::request(QJsonObject &json)
+{
+    json["requestId"] = ++next_id;
+
+    socket->sendTextMessage(QJsonDocument(json).toJson());
+
+    return Request(next_id, this);
+}
+
 

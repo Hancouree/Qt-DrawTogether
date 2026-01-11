@@ -6,50 +6,57 @@
 #include <QJsonObject>
 #include <QTimer>
 
-class Socket : public QObject
+#include "statemachine.h"
+#include <requestmanager.h>
+
+#define RECONNECT_INTERVAL_MS 3000
+#define MAX_RECONNECT_ATTEMPTS 5
+#define TIMEOUT_INTERVAL 5000
+
+class Socket : public RequestManager
 {
     Q_OBJECT
-    Q_PROPERTY(STATES state READ state NOTIFY stateChanged)
+    Q_PROPERTY(bool connected READ connected  NOTIFY connectionChanged)
+    Q_PROPERTY(StateMachine::States state READ state NOTIFY stateChanged)
     Q_PROPERTY(QString username READ username NOTIFY usernameChanged)
 public:
-    enum STATES {
-        CONNECTING,
-        RECONNECTING,
-        AUTHENTICATION,
-        MENU,
-        ROOM
-    };
-    Q_ENUM(STATES)
-
-    enum EVENTS {
-        CONNECTED,
-        DISCONNECTED,
-        USERNAME_ESTABLISHED,
-    };
-    Q_ENUM(EVENTS)
-
-    Socket(QObject* parent = nullptr);
+    explicit Socket(QObject* parent = nullptr);
     ~Socket();
 public slots:
-    STATES state();
-    QString username();
+    bool connected() const { return _connected; }
+    StateMachine::States state() { return _state.getState(); };
+    QString username() const { return _username; }
 
+    Request request(QJsonObject& json) override;
     void sendUsername(const QString& username);
 private slots:
     void onConnection();
+    void onAnswer(const QString& answer);
 signals:
+    void connectionChanged();
     void stateChanged();
     void usernameChanged();
 private:
-    void sendServerRequest(const QString& req);
+    void initSocket();
+    void initTimers();
+    void initStateMachine();
+
+    void tryReconnect();
 
     //handlers
-    bool handleEstablishedUsername(const QString& answer, QJsonObject& root);
 
-    STATES currentState;
+    StateMachine _state;
+
     QWebSocket* socket;
-    QString _username;
+    bool _connected;
     QString session_id;
+    QUrl serverUrl;
+
+    QString _username;
+
+    //QTimers
+    QTimer reconnectTimer;
+    int reconnectAttempts;
 };
 
 #endif // SOCKET_H

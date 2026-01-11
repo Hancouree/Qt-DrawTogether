@@ -25,13 +25,19 @@ Item {
             width: Math.min(root.width * 0.6, 500)
             height: 35
             placeholderText: "Введите сюда"
+            focus: true
             anchors.horizontalCenter: parent.horizontalCenter
 
             background: Rectangle {
                 border.width: 1
                 border.color: "black"
                 radius: 5
-                // verticalCenter: Text.verticalCenter
+            }
+
+            Keys.onPressed: (event) => {
+                if (event.key === Qt.Key_Return && !button.isClicked) {
+                    button.click()
+                }
             }
         }
 

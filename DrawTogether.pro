@@ -2,7 +2,9 @@ QT += quick websockets
 
 SOURCES += \
         main.cpp \
-        socket.cpp
+        requestmanager.cpp \
+        socket.cpp \
+        statemachine.cpp
 
 resources.files = main.qml ConnectionPage.qml
 resources.prefix = /$${TARGET}
@@ -21,7 +23,9 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 HEADERS += \
-    socket.h
+    requestmanager.h \
+    socket.h \
+    statemachine.h
 
 DISTFILES += \
     AuthenticationPage.qml \
