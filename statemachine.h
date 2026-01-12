@@ -8,12 +8,16 @@ class StateMachine : public QObject
     Q_OBJECT
 public:
     enum States {
-
+        WAITING,
+        AUTHENTICATING,
+        MENU
     };
     Q_ENUM(States)
 
     enum Events {
-
+        STOP_WAITING,
+        START_WAITING,
+        AUTHENTICATED
     };
     Q_ENUM(Events)
 

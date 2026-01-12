@@ -1,19 +1,32 @@
 #include "statemachine.h"
-#include "qdebug.h"
 
 StateMachine::StateMachine(QObject* parent) : QObject(parent),
-    currentState(States::CONNECTING)
+    currentState(States::WAITING)
 {
     transition = {
-
+        {WAITING, {
+          {STOP_WAITING, AUTHENTICATING},
+          {START_WAITING, WAITING}
+        }},
+        {AUTHENTICATING, {
+             {AUTHENTICATED, MENU},
+             {START_WAITING, WAITING}
+         }},
+        {MENU, {
+           {START_WAITING, WAITING}
+        }}
     };
 }
 
 void StateMachine::applyEvent(Events e)
 {
-    if (transition.count(currentState)) {
-        currentState = transition[currentState][e] ? transition[currentState][e] : currentState;
-        emit stateChanged();
+    auto stateIt = transition.find(currentState);
+    if (stateIt != transition.end()) {
+        auto eventIt = stateIt->second.find(e);
+        if (eventIt != stateIt->second.end()) {
+            currentState = eventIt->second;
+            emit stateChanged();
+        }
     }
 }
 

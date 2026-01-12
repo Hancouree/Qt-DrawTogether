@@ -29,4 +29,5 @@ HEADERS += \
 
 DISTFILES += \
     AuthenticationPage.qml \
-    ConnectionPage.qml
+    ConnectionPage.qml \
+    MenuPage.qml

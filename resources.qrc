@@ -3,5 +3,6 @@
         <file>ConnectionPage.qml</file>
         <file>main.qml</file>
         <file>AuthenticationPage.qml</file>
+        <file>MenuPage.qml</file>
     </qresource>
 </RCC>

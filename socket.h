@@ -2,16 +2,12 @@
 #define SOCKET_H
 
 #include <QWebSocket>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QTimer>
 
 #include "statemachine.h"
 #include <requestmanager.h>
 
 #define RECONNECT_INTERVAL_MS 3000
 #define MAX_RECONNECT_ATTEMPTS 5
-#define TIMEOUT_INTERVAL 5000
 
 class Socket : public RequestManager
 {
@@ -21,14 +17,14 @@ class Socket : public RequestManager
     Q_PROPERTY(QString username READ username NOTIFY usernameChanged)
 public:
     explicit Socket(QObject* parent = nullptr);
-    ~Socket();
+    ~Socket() override;
 public slots:
     bool connected() const { return _connected; }
     StateMachine::States state() { return _state.getState(); };
     QString username() const { return _username; }
 
-    Request request(QJsonObject& json) override;
     void sendUsername(const QString& username);
+    void searchRooms();
 private slots:
     void onConnection();
     void onAnswer(const QString& answer);
@@ -41,6 +37,7 @@ private:
     void initTimers();
     void initStateMachine();
 
+    Request request(QJsonObject& json) override;
     void tryReconnect();
 
     //handlers

@@ -17,6 +17,11 @@ Window {
         visible: false
     }
 
+    MenuPage {
+        id: menuPage
+        visible: false
+    }
+
     StackView {
         id: stackView
         initialItem: connectionPage
@@ -28,16 +33,16 @@ Window {
 
         function onStateChanged() {
             //delete stack view mb
-            console.log(Socket.state)
+            console.log(stackView.depth)
             switch(Socket.state) {
-                case 0: //CONNECTING
-                    stackView.push(connectionPage)
+                case 0: //WAITING
+                    stackView.replace(connectionPage)
                     break;
-                case 3: //AUTHENTIFICATION
-                    stackView.pop()
-                    stackView.push(authenticationPage)
+                case 1: //AUTHENTIFICATION
+                    stackView.replace(authenticationPage)
                     break;
                 case 2:
+                    stackView.replace(menuPage)
                     break;
                 default:
                     console.log("Default was called")
@@ -51,6 +56,18 @@ Window {
 
         function onSendUsername(username) {
             Socket.sendUsername(username)
+        }
+    }
+
+    Connections {
+        target: menuPage
+
+        function onSearchRooms() {
+            Socket.searchRooms();
+        }
+
+        function onCreateRoom() {
+            // Socket.createRoom()
         }
     }
 }

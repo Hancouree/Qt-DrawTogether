@@ -48,7 +48,7 @@ void Socket::onConnection()
 {
     qDebug() << "Socket was connected to the server\n";
     _connected = true;
-    _state.applyEvent(StateMachine::Events::CONNECTION_ESTABLISHED);
+    _state.applyEvent(StateMachine::Events::STOP_WAITING);
 
     reconnectAttempts = 0;
     reconnectTimer.stop();
@@ -67,13 +67,11 @@ void Socket::onAnswer(const QString &message)
 
     const RequestId requestId = root["requestId"].toInteger();
 
-    if (onDone.count(requestId)) {
-        onDone[requestId](root);
-        onDone.erase(requestId);
+    if (requestId <= 0) {
+        //...
+    } else {
+        requestDone(requestId, root);
     }
-
-    if (onFail.count(requestId))
-        onFail.erase(requestId);
 }
 
 void Socket::tryReconnect()
@@ -109,13 +107,29 @@ void Socket::sendUsername(const QString &username)
 
         qDebug() << "username established\n";
 
-        _state.applyEvent(StateMachine::Events::AUTHENTICATION_SUCCESS);
+        _state.applyEvent(StateMachine::Events::AUTHENTICATED);
 
         emit usernameChanged();
     })
-    .fail([](const QJsonObject& root) {
-            qDebug() << "Error ocurred\n";
+    .fail([](QString error_message) {
+            qDebug() << "Error: " << error_message << '\n';
     });
+}
+
+void Socket::searchRooms()
+{
+    QJsonObject json;
+
+    json["cmd"] = "search_rooms";
+    json["timestamp"] = QDateTime::currentMSecsSinceEpoch();
+    json["session_id"] = session_id;
+
+    qDebug() << json << '\n';
+
+    // request(json)
+    // .done([this](const QJsonObject& root) {
+    //     // _state.applyEvent() //search rooms
+    // });
 }
 
 Socket::~Socket()
@@ -131,6 +145,7 @@ Request Socket::request(QJsonObject &json)
 {
     json["requestId"] = ++next_id;
 
+    setupTimer(next_id);
     socket->sendTextMessage(QJsonDocument(json).toJson());
 
     return Request(next_id, this);

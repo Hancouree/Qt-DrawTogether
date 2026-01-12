@@ -41,7 +41,7 @@ Item {
                     to: 360
                     duration: 1000
                     loops: Animation.Infinite
-                    running: true
+                    running: root.visible
                 }
             }
         }
